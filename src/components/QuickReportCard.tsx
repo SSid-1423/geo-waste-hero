@@ -7,10 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRealTimeUpdates } from "@/hooks/useRealTimeUpdates";
 import { useToast } from "@/hooks/use-toast";
+import { ImageUpload } from "@/components/ImageUpload";
 import { Camera, MapPin, Loader2 } from "lucide-react";
 
 export function QuickReportCard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [images, setImages] = useState<File[]>([]);
   const [reportData, setReportData] = useState({
     title: "",
     description: "",
@@ -51,13 +53,19 @@ export function QuickReportCard() {
         }
       }
 
+      // In a real app, you would upload images to storage and get URLs
+      const photo_urls = images.length > 0 ? 
+        images.map((_, index) => `https://placeholder.com/report-${Date.now()}-${index}.jpg`) : 
+        undefined;
+
       const { error } = await createReport({
         title: reportData.title,
         description: reportData.description || undefined,
         waste_type: reportData.waste_type as "dry" | "wet" | "hazardous" | "electronic" | "medical",
         address: reportData.address || undefined,
         location_lat,
-        location_lng
+        location_lng,
+        photo_urls
       });
 
       if (error) {
@@ -79,6 +87,7 @@ export function QuickReportCard() {
           waste_type: "",
           address: ""
         });
+        setImages([]);
       }
     } catch (error) {
       toast({
@@ -178,40 +187,29 @@ export function QuickReportCard() {
             />
           </div>
 
-          <div className="flex gap-3">
-            <Button 
-              type="submit" 
-              variant="hero" 
-              className="flex-1"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Camera className="mr-2 h-4 w-4" />
-                  Submit Report
-                </>
-              )}
-            </Button>
-            
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => {
-                // Future: Implement photo capture functionality
-                toast({
-                  title: "Coming Soon",
-                  description: "Photo capture feature will be available soon"
-                });
-              }}
-            >
-              <Camera className="h-4 w-4" />
-            </Button>
+          <div className="space-y-2">
+            <Label>Photos (Optional)</Label>
+            <ImageUpload onImageSelect={setImages} maxImages={3} />
           </div>
+
+          <Button 
+            type="submit" 
+            variant="hero" 
+            className="w-full"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Camera className="mr-2 h-4 w-4" />
+                Submit Report
+              </>
+            )}
+          </Button>
 
           <div className="text-xs text-muted-foreground">
             * Required fields. Location will be automatically detected if permission is granted.

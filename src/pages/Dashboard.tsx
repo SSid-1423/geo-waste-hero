@@ -1,11 +1,16 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatsCard } from "@/components/StatsCard";
 import { QuickReportCard } from "@/components/QuickReportCard";
+import { ReportCard } from "@/components/ReportCard";
+import { TaskCard } from "@/components/TaskCard";
+import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealTimeUpdates } from "@/hooks/useRealTimeUpdates";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   ArrowLeft, 
   MapPin, 
@@ -18,20 +23,94 @@ import {
   TrendingUp,
   FileText,
   LogOut,
-  RefreshCw
+  RefreshCw,
+  ClipboardList
 } from "lucide-react";
 
 export function Dashboard() {
   const { role } = useParams<{ role: string }>();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
-  const { reports, tasks, loading, refetch } = useRealTimeUpdates();
+  const { 
+    reports, 
+    tasks, 
+    loading, 
+    userCounts,
+    updateReportStatus, 
+    createTask, 
+    updateTaskStatus,
+    submitFeedback,
+    refetch 
+  } = useRealTimeUpdates();
+  
+  const [municipalityUsers, setMunicipalityUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [completedTasks, setCompletedTasks] = useState<any[]>([]);
+  const [feedbackDialog, setFeedbackDialog] = useState<{
+    isOpen: boolean;
+    reportId: string;
+    reportTitle: string;
+  }>({ isOpen: false, reportId: '', reportTitle: '' });
 
   const currentRole = (role || profile?.role) as "citizen" | "government" | "municipality";
+
+  // Fetch municipality users for assignment
+  useEffect(() => {
+    const fetchMunicipalityUsers = async () => {
+      if (profile?.role === 'government') {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email')
+          .eq('role', 'municipality');
+        
+        if (data) {
+          setMunicipalityUsers(data.map(user => ({
+            id: user.user_id,
+            name: user.full_name || user.email,
+            email: user.email
+          })));
+        }
+      }
+    };
+
+    fetchMunicipalityUsers();
+  }, [profile?.role]);
+
+  // Check for completed tasks to show feedback dialog
+  useEffect(() => {
+    if (currentRole === 'citizen') {
+      const newlyCompleted = reports.filter(report => 
+        report.status === 'completed' && 
+        !completedTasks.some(ct => ct.id === report.id)
+      );
+
+      if (newlyCompleted.length > 0) {
+        const latest = newlyCompleted[0];
+        setFeedbackDialog({
+          isOpen: true,
+          reportId: latest.id,
+          reportTitle: latest.title
+        });
+        setCompletedTasks(prev => [...prev, ...newlyCompleted]);
+      }
+    }
+  }, [reports, currentRole, completedTasks]);
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const handleFeedbackSubmit = async (rating: number, feedback: string) => {
+    await submitFeedback(feedbackDialog.reportId, rating, feedback);
+    setFeedbackDialog({ isOpen: false, reportId: '', reportTitle: '' });
+  };
+
+  const handleAssignTask = async (reportId: string, assignedTo: string, notes?: string) => {
+    await createTask({
+      report_id: reportId,
+      assigned_to: assignedTo,
+      notes
+    });
   };
 
   // Calculate stats based on real data
@@ -135,163 +214,168 @@ export function Dashboard() {
     </div>
   );
 
-  const renderGovernmentDashboard = () => (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard value={stats.total.toString()} label="Total Reports" color="primary" trend="up" />
-        <StatsCard value={stats.verified.toString()} label="Verified" color="success" />
-        <StatsCard value={stats.pendingReview.toString()} label="Pending Review" color="warning" />
-        <StatsCard value={stats.rejected.toString()} label="Rejected" color="accent" />
-      </div>
+  const renderGovernmentDashboard = () => {
+    const pendingReports = reports.filter(r => r.status === 'pending');
+    const verifiedReports = reports.filter(r => r.status === 'verified');
+    const completedReports = reports.filter(r => r.status === 'completed');
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Pending Verification
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {[
-              { id: "WR156", location: "Sector 14", type: "Dry Waste", priority: "high" },
-              { id: "WR157", location: "Mall Road", type: "Wet Waste", priority: "medium" },
-              { id: "WR158", location: "IT Park", type: "Hazardous", priority: "high" },
-            ].map((report) => (
-              <div key={report.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div>
-                  <p className="font-medium">{report.id}</p>
-                  <p className="text-sm text-muted-foreground">{report.location} • {report.type}</p>
-                </div>
-                <div className="flex gap-2">
-                  <Badge variant={report.priority === "high" ? "destructive" : "secondary"}>
-                    {report.priority}
-                  </Badge>
-                  <Button size="sm" variant="default">Verify</Button>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+          <StatsCard value={stats.total.toString()} label="Total Reports" color="primary" trend="up" />
+          <StatsCard value={stats.verified.toString()} label="Verified" color="success" />
+          <StatsCard value={stats.pendingReview.toString()} label="Pending Review" color="warning" />
+          <StatsCard value={userCounts.citizens.toString()} label="Citizens" color="accent" />
+          <StatsCard value={userCounts.municipalities.toString()} label="Municipalities" color="secondary" />
+          <StatsCard value={completedReports.length.toString()} label="Completed" color="success" />
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Analytics Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Resolution Rate</span>
-                <span className="font-medium">87%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-success h-2 rounded-full" style={{ width: "87%" }}></div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Response Time</span>
-                <span className="font-medium">2.3 hrs avg</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full" style={{ width: "65%" }}></div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Citizen Satisfaction</span>
-                <span className="font-medium">4.2/5</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-accent h-2 rounded-full" style={{ width: "84%" }}></div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-
-  const renderMunicipalityDashboard = () => (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard value={stats.total.toString()} label="Assigned Tasks" color="accent" />
-        <StatsCard value={stats.completed.toString()} label="Completed" color="success" trend="up" />
-        <StatsCard value={stats.inProgress.toString()} label="In Progress" color="warning" />
-        <StatsCard value={stats.assigned.toString()} label="Pending Start" color="primary" />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Active Tasks
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {[
-              { id: "CT001", location: "Park Avenue", type: "Dry Waste Collection", status: "assigned", priority: "high" },
-              { id: "CT002", location: "Mall Road", type: "Wet Waste Collection", status: "progress", priority: "medium" },
-              { id: "CT003", location: "Sector 18", type: "Hazardous Waste", status: "assigned", priority: "high" },
-            ].map((task) => (
-              <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">{task.id}</p>
-                  <p className="text-sm text-muted-foreground">{task.location}</p>
-                  <p className="text-sm">{task.type}</p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Pending Verification ({pendingReports.length})
+                {loading && <RefreshCw className="h-4 w-4 animate-spin" />}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+              {pendingReports.slice(0, 5).map((report) => (
+                <ReportCard
+                  key={report.id}
+                  report={report}
+                  onUpdateStatus={updateReportStatus}
+                  showActions={true}
+                />
+              ))}
+              {pendingReports.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  No pending reports
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <Badge variant={task.priority === "high" ? "destructive" : "secondary"}>
-                    {task.priority}
-                  </Badge>
-                  <Button 
-                    size="sm" 
-                    variant={task.status === "progress" ? "success" : "default"}
-                  >
-                    {task.status === "progress" ? "Mark Complete" : "Start Task"}
-                  </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Ready for Assignment ({verifiedReports.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+              {verifiedReports.slice(0, 5).map((report) => (
+                <ReportCard
+                  key={report.id}
+                  report={report}
+                  onUpdateStatus={updateReportStatus}
+                  onAssignTask={handleAssignTask}
+                  municipalityUsers={municipalityUsers}
+                  showActions={true}
+                />
+              ))}
+              {verifiedReports.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  No verified reports waiting for assignment
                 </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Team Status
+              <ClipboardList className="h-5 w-5" />
+              Completed Projects ({completedReports.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-center p-4 bg-success/10 rounded-lg">
-              <Users className="h-8 w-8 mx-auto mb-2 text-success" />
-              <p className="font-medium">12 Teams Active</p>
-              <p className="text-sm text-muted-foreground">All teams operational</p>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {completedReports.slice(0, 6).map((report) => (
+                <ReportCard
+                  key={report.id}
+                  report={report}
+                  showActions={false}
+                />
+              ))}
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Team A</span>
-                <Badge variant="default">Active</Badge>
+            {completedReports.length === 0 && (
+              <div className="text-center py-4 text-muted-foreground">
+                No completed projects yet
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Team B</span>
-                <Badge variant="default">Active</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Team C</span>
-                <Badge variant="secondary">Break</Badge>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const renderMunicipalityDashboard = () => {
+    const activeTasks = tasks.filter(t => t.status !== 'completed');
+    const completedTasks = tasks.filter(t => t.status === 'completed');
+
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatsCard value={stats.total.toString()} label="Assigned Tasks" color="accent" />
+          <StatsCard value={stats.completed.toString()} label="Completed" color="success" trend="up" />
+          <StatsCard value={stats.inProgress.toString()} label="In Progress" color="warning" />
+          <StatsCard value={stats.assigned.toString()} label="Pending Start" color="primary" />
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Active Tasks ({activeTasks.length})
+                {loading && <RefreshCw className="h-4 w-4 animate-spin" />}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+              {activeTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  reportDetails={reports.find(r => r.id === task.report_id)}
+                  onUpdateStatus={updateTaskStatus}
+                />
+              ))}
+              {activeTasks.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  No active tasks assigned
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Completed Tasks
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 max-h-96 overflow-y-auto">
+              {completedTasks.slice(0, 5).map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  reportDetails={reports.find(r => r.id === task.report_id)}
+                />
+              ))}
+              {completedTasks.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  No completed tasks yet
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
 
   const getRoleTitle = () => {
     switch (currentRole) {
@@ -337,6 +421,14 @@ export function Dashboard() {
         {currentRole === "citizen" && renderCitizenDashboard()}
         {currentRole === "government" && renderGovernmentDashboard()}
         {currentRole === "municipality" && renderMunicipalityDashboard()}
+
+        <FeedbackDialog
+          isOpen={feedbackDialog.isOpen}
+          onClose={() => setFeedbackDialog({ isOpen: false, reportId: '', reportTitle: '' })}
+          reportTitle={feedbackDialog.reportTitle}
+          reportId={feedbackDialog.reportId}
+          onSubmitFeedback={handleFeedbackSubmit}
+        />
       </div>
     </div>
   );

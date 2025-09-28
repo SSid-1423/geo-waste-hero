@@ -41,6 +41,7 @@ export function useRealTimeUpdates() {
   const [reports, setReports] = useState<WasteReport[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userCounts, setUserCounts] = useState({ citizens: 0, municipalities: 0, government: 0 });
 
   useEffect(() => {
     if (!user || !profile) return;
@@ -120,6 +121,26 @@ export function useRealTimeUpdates() {
           console.error('Error fetching tasks:', tasksError);
         } else {
           setTasks((tasksData || []) as Task[]);
+        }
+      }
+
+      // Fetch user counts for government dashboard
+      if (profile.role === 'government') {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('role');
+
+        if (!profilesError && profilesData) {
+          const counts = profilesData.reduce((acc, p) => {
+            acc[p.role] = (acc[p.role] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+          
+          setUserCounts({
+            citizens: counts.citizen || 0,
+            municipalities: counts.municipality || 0,
+            government: counts.government || 0
+          });
         }
       }
     } catch (error) {
@@ -267,14 +288,35 @@ export function useRealTimeUpdates() {
     }
   };
 
+  const submitFeedback = async (reportId: string, rating: number, feedback: string) => {
+    if (!user) return { error: { message: 'User not authenticated' } };
+
+    try {
+      // In a real app, you would store feedback in a feedback table
+      // For now, we'll add a note to the report
+      const { error } = await supabase
+        .from('waste_reports')
+        .update({ 
+          description: `${feedback ? `Feedback: ${feedback} (Rating: ${rating}/5)` : `Rating: ${rating}/5`}` 
+        })
+        .eq('id', reportId);
+
+      return { error };
+    } catch (error) {
+      return { error };
+    }
+  };
+
   return {
     reports,
     tasks,
     loading,
+    userCounts,
     createReport,
     updateReportStatus,
     createTask,
     updateTaskStatus,
+    submitFeedback,
     refetch: fetchInitialData
   };
 }
