@@ -1,307 +1,352 @@
-import { useState } from "react";
-import { Navigation } from "@/components/Navigation";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { RoleCard } from "@/components/RoleCard";
 import { FeatureCard } from "@/components/FeatureCard";
-import { Button } from "@/components/ui/button";
-import { Dashboard } from "@/pages/Dashboard";
-import heroImage from "@/assets/hero-waste-management.jpg";
+import { Navigation } from "@/components/Navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Users, 
-  Shield, 
-  Truck, 
+  Building2, 
+  UserCheck, 
   Camera, 
   MapPin, 
-  BookOpen, 
-  Store, 
-  TrendingUp,
-  Recycle,
+  Recycle, 
+  Award, 
+  Shield,
+  Leaf,
   Globe,
-  Award,
-  Bell
+  Target,
+  BookOpen,
+  Store,
+  TrendingUp,
+  Bell,
+  Truck
 } from "lucide-react";
-
-type UserRole = "citizen" | "government" | "municipality" | null;
+import heroImage from "@/assets/hero-waste-management.jpg";
 
 const Index = () => {
-  const [selectedRole, setSelectedRole] = useState<UserRole>(null);
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
 
-  if (selectedRole) {
-    return <Dashboard role={selectedRole} onBack={() => setSelectedRole(null)} />;
-  }
+  useEffect(() => {
+    // Redirect authenticated users to their dashboard
+    if (user && profile) {
+      navigate(`/dashboard/${profile.role}`);
+    }
+  }, [user, profile, navigate]);
+
+  const handleRoleSelect = (role: "citizen" | "government" | "municipality") => {
+    if (user && profile) {
+      // If user is logged in, go to dashboard
+      navigate(`/dashboard/${profile.role}`);
+    } else {
+      // If not logged in, go to auth page
+      navigate('/auth');
+    }
+  };
+
+  const handleGetStarted = () => {
+    navigate('/auth');
+  };
 
   return (
-    <div className="min-h-screen">
-      <Navigation />
-      
-      {/* Hero Section */}
-      <section className="relative bg-gradient-surface overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-8 animate-fade-in">
-              <div className="space-y-4">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
-                  Smart <span className="bg-gradient-hero bg-clip-text text-transparent">Waste</span> Management for a Cleaner Future
+    <div className="min-h-screen bg-gradient-surface">
+      <div className="max-w-7xl mx-auto">
+        <Navigation />
+
+        {/* Hero Section */}
+        <section className="relative py-20 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-background/90 to-background/70"></div>
+          <div 
+            className="absolute inset-0 bg-cover bg-center" 
+            style={{ backgroundImage: `url(${heroImage})` }}
+          ></div>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-8">
+                <Badge variant="secondary" className="w-fit">
+                  🌱 Sustainable Future Initiative
+                </Badge>
+                <h1 className="text-5xl lg:text-6xl font-bold bg-gradient-hero bg-clip-text text-transparent leading-tight">
+                  Transform Waste into
+                  <br />
+                  <span className="text-accent">Opportunity</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
-                  Empowering citizens, government, and municipalities to work together for efficient waste management and environmental monitoring.
+                  Join the revolution in waste management. Report, track, and resolve waste issues 
+                  in your community with our comprehensive monitoring system.
                 </p>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button variant="hero" size="lg" className="text-lg">
-                  Get Started Today
-                  <Globe className="ml-2 h-5 w-5" />
-                </Button>
-                <Button variant="outline" size="lg" className="text-lg">
-                  Watch Demo
-                </Button>
-              </div>
-
-              <div className="flex items-center space-x-8 text-sm text-muted-foreground">
-                <div className="flex items-center">
-                  <Award className="h-4 w-4 mr-2 text-primary" />
-                  Government Certified
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button size="lg" variant="hero" className="text-lg px-8 py-4" onClick={handleGetStarted}>
+                    Get Started Today
+                  </Button>
+                  <Button size="lg" variant="outline" className="text-lg px-8 py-4" onClick={() => {
+                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                  }}>
+                    Learn More
+                  </Button>
                 </div>
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-2 text-primary" />
-                  10K+ Active Users
-                </div>
+              </div>
+              <div className="relative">
+                <img 
+                  src={heroImage} 
+                  alt="Smart waste management monitoring" 
+                  className="rounded-2xl shadow-strong w-full"
+                />
+                <div className="absolute inset-0 bg-gradient-primary/20 rounded-2xl"></div>
               </div>
             </div>
-            
-            <div className="relative animate-slide-up">
-              <img 
-                src={heroImage} 
-                alt="Smart waste management and environmental monitoring" 
-                className="rounded-2xl shadow-strong w-full h-auto"
-              />
-              <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent rounded-2xl"></div>
-            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Role Selection */}
-      <section id="get-started" className="py-20 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Choose Your <span className="bg-gradient-hero bg-clip-text text-transparent">Role</span>
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Select your role to access tailored features designed for your specific needs in waste management
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8 animate-scale-in">
-            <RoleCard
-              title="Citizens"
-              description="Report waste and access training"
-              icon={Users}
-              variant="citizen"
-              features={[
-                "Report waste with geo-tagged photos",
-                "Track cleanup status",
-                "Access training modules",
-                "Shop for waste utilities",
-                "Earn rewards for participation"
-              ]}
-              onClick={() => setSelectedRole("citizen")}
-            />
-            
-            <RoleCard
-              title="Government"
-              description="Verify reports and track analytics"
-              icon={Shield}
-              variant="government"
-              features={[
-                "Verify citizen reports",
-                "Assign tasks to teams",
-                "Monitor live dashboards",
-                "Generate analytics",
-                "Manage penalties & fines"
-              ]}
-              onClick={() => setSelectedRole("government")}
-            />
-            
-            <RoleCard
-              title="Municipality"
-              description="Execute cleanup operations"
-              icon={Truck}
-              variant="municipality"
-              features={[
-                "Receive cleanup assignments",
-                "Update task status",
-                "Track collection vehicles",
-                "Upload completion proof",
-                "Manage waste processing"
-              ]}
-              onClick={() => setSelectedRole("municipality")}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-20 bg-gradient-surface">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Powerful <span className="bg-gradient-hero bg-clip-text text-transparent">Features</span>
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Everything you need for efficient waste management and environmental monitoring
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <FeatureCard
-              title="Geo-tagging"
-              description="Real-time location tracking for waste reports"
-              icon={MapPin}
-              gradient="bg-gradient-primary"
-            />
-            <FeatureCard
-              title="Photo Reports"
-              description="Visual documentation of waste issues"
-              icon={Camera}
-              gradient="bg-gradient-secondary"
-            />
-            <FeatureCard
-              title="Training Hub"
-              description="Educational modules for proper waste management"
-              icon={BookOpen}
-              gradient="bg-gradient-primary"
-            />
-            <FeatureCard
-              title="Utility Shop"
-              description="Purchase waste management tools and equipment"
-              icon={Store}
-              gradient="bg-gradient-secondary"
-            />
-            <FeatureCard
-              title="Live Tracking"
-              description="Monitor cleanup progress in real-time"
-              icon={TrendingUp}
-              gradient="bg-gradient-primary"
-            />
-            <FeatureCard
-              title="Smart Notifications"
-              description="Stay updated with push notifications"
-              icon={Bell}
-              gradient="bg-gradient-secondary"
-            />
-            <FeatureCard
-              title="Recycling Programs"
-              description="Promote sustainable waste disposal methods"
-              icon={Recycle}
-              gradient="bg-gradient-primary"
-            />
-            <FeatureCard
-              title="Community Movement"
-              description="Engage citizens in environmental initiatives"
-              icon={Globe}
-              gradient="bg-gradient-secondary"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="how-it-works" className="py-20 bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              How It <span className="bg-gradient-hero bg-clip-text text-transparent">Works</span>
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              A simple, efficient workflow connecting citizens, government, and municipality teams
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-4 gap-8">
-            {[
-              { step: "1", title: "Report", description: "Citizens report waste with photos and location" },
-              { step: "2", title: "Verify", description: "Government verifies and categorizes reports" },
-              { step: "3", title: "Assign", description: "Tasks assigned to municipality cleanup teams" },
-              { step: "4", title: "Complete", description: "Status updated with completion proof" }
-            ].map((item, index) => (
-              <div key={index} className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-hero text-white text-xl font-bold">
-                  {item.step}
-                </div>
-                <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-                <p className="text-muted-foreground">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-hero">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Ready to Make a Difference?
-          </h2>
-          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Join thousands of citizens, government officials, and municipality teams working together for a cleaner environment
-          </p>
-          <Button variant="secondary" size="lg" className="text-lg">
-            Start Your Journey
-            <Recycle className="ml-2 h-5 w-5" />
-          </Button>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-foreground text-background py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
-                  <Recycle className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-lg font-bold">WasteWise</span>
-              </div>
-              <p className="text-sm text-background/70">
-                Transforming waste management through technology and community collaboration.
+        {/* Features Section */}
+        <section id="features" className="py-20 bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+                Comprehensive Waste Management
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Our platform connects citizens, government officials, and municipality teams 
+                for efficient waste monitoring and resolution.
               </p>
             </div>
-            <div>
-              <h3 className="font-semibold mb-4">Features</h3>
-              <ul className="space-y-2 text-sm text-background/70">
-                <li>Waste Reporting</li>
-                <li>Real-time Tracking</li>
-                <li>Training Modules</li>
-                <li>Analytics Dashboard</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Support</h3>
-              <ul className="space-y-2 text-sm text-background/70">
-                <li>Help Center</li>
-                <li>Contact Us</li>
-                <li>Training Resources</li>
-                <li>API Documentation</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Company</h3>
-              <ul className="space-y-2 text-sm text-background/70">
-                <li>About Us</li>
-                <li>Privacy Policy</li>
-                <li>Terms of Service</li>
-                <li>Careers</li>
-              </ul>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+              <FeatureCard
+                title="Photo Reports"
+                description="Upload geo-tagged photos of waste issues"
+                icon={Camera}
+                gradient="bg-gradient-primary"
+              />
+              <FeatureCard
+                title="Real-time Tracking"
+                description="Monitor cleanup progress live"
+                icon={MapPin}
+                gradient="bg-gradient-secondary"
+              />
+              <FeatureCard
+                title="Training Modules"
+                description="Learn proper waste segregation"
+                icon={BookOpen}
+                gradient="bg-gradient-primary"
+              />
+              <FeatureCard
+                title="Smart Analytics"
+                description="Data-driven insights for better decisions"
+                icon={TrendingUp}
+                gradient="bg-gradient-secondary"
+              />
             </div>
           </div>
-          <div className="border-t border-background/20 mt-8 pt-8 text-center text-sm text-background/70">
-            <p>&copy; 2024 WasteWise. All rights reserved. Built for a sustainable future.</p>
+        </section>
+
+        {/* Role Selection Section */}
+        <section id="roles" className="py-20 bg-background">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+                Choose Your Role
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Access tailored features designed for your specific role in waste management
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              <RoleCard
+                title="Citizens"
+                description="Report waste issues and track their resolution"
+                icon={Users}
+                variant="citizen"
+                features={[
+                  "Report waste with photos",
+                  "Track cleanup status",
+                  "Access training modules",
+                  "Earn rewards points",
+                  "Buy waste utilities"
+                ]}
+                onClick={() => handleRoleSelect("citizen")}
+              />
+
+              <RoleCard
+                title="Government"
+                description="Verify reports and manage operations"
+                icon={Shield}
+                variant="government"
+                features={[
+                  "Verify citizen reports",
+                  "Assign cleanup tasks",
+                  "Monitor dashboards",
+                  "Generate analytics",
+                  "Manage penalties"
+                ]}
+                onClick={() => handleRoleSelect("government")}
+              />
+
+              <RoleCard
+                title="Municipality"
+                description="Execute cleanup operations efficiently"
+                icon={Truck}
+                variant="municipality"
+                features={[
+                  "Receive task assignments",
+                  "Update completion status",
+                  "Track team activities",
+                  "Upload proof photos",
+                  "Manage resources"
+                ]}
+                onClick={() => handleRoleSelect("municipality")}
+              />
+            </div>
           </div>
-        </div>
-      </footer>
+        </section>
+
+        {/* Impact Section */}
+        <section id="impact" className="py-20 bg-gradient-surface">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+                Making Real Impact
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Join thousands of users already making a difference in their communities
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-4 gap-8">
+              <Card className="text-center border-none bg-background/50 backdrop-blur">
+                <CardContent className="pt-6">
+                  <div className="text-3xl font-bold text-primary mb-2">50K+</div>
+                  <div className="text-muted-foreground">Reports Resolved</div>
+                </CardContent>
+              </Card>
+              <Card className="text-center border-none bg-background/50 backdrop-blur">
+                <CardContent className="pt-6">
+                  <div className="text-3xl font-bold text-primary mb-2">12K+</div>
+                  <div className="text-muted-foreground">Active Users</div>
+                </CardContent>
+              </Card>
+              <Card className="text-center border-none bg-background/50 backdrop-blur">
+                <CardContent className="pt-6">
+                  <div className="text-3xl font-bold text-primary mb-2">200+</div>
+                  <div className="text-muted-foreground">Cities Covered</div>
+                </CardContent>
+              </Card>
+              <Card className="text-center border-none bg-background/50 backdrop-blur">
+                <CardContent className="pt-6">
+                  <div className="text-3xl font-bold text-primary mb-2">95%</div>
+                  <div className="text-muted-foreground">Resolution Rate</div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works */}
+        <section className="py-20 bg-background">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+                How It Works
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Simple 4-step process for effective waste management
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-4 gap-8">
+              {[
+                { step: "1", title: "Report", description: "Citizens report waste with photos and location", icon: Camera },
+                { step: "2", title: "Verify", description: "Government verifies and categorizes reports", icon: UserCheck },
+                { step: "3", title: "Assign", description: "Tasks assigned to municipality teams", icon: Target },
+                { step: "4", title: "Complete", description: "Teams complete cleanup and update status", icon: Award }
+              ].map((item, index) => (
+                <div key={index} className="text-center">
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-hero text-white">
+                    <item.icon className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+                  <p className="text-muted-foreground">{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-20 bg-gradient-hero">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
+              Ready to Make a Difference?
+            </h2>
+            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+              Join the waste management revolution and help build cleaner, more sustainable communities.
+            </p>
+            <Button 
+              variant="secondary" 
+              size="lg" 
+              className="text-lg px-8 py-4"
+              onClick={handleGetStarted}
+            >
+              <Recycle className="mr-2 h-5 w-5" />
+              Start Your Journey
+            </Button>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="bg-foreground text-background py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid md:grid-cols-4 gap-8">
+              <div>
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+                    <Leaf className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-lg font-bold">WasteWise</span>
+                </div>
+                <p className="text-sm text-background/70">
+                  Transforming waste management through technology and community collaboration.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-4">Features</h3>
+                <ul className="space-y-2 text-sm text-background/70">
+                  <li>Waste Reporting</li>
+                  <li>Real-time Tracking</li>
+                  <li>Training Modules</li>
+                  <li>Analytics Dashboard</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-4">Support</h3>
+                <ul className="space-y-2 text-sm text-background/70">
+                  <li>Help Center</li>
+                  <li>Contact Us</li>
+                  <li>Training Resources</li>
+                  <li>API Documentation</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-4">Company</h3>
+                <ul className="space-y-2 text-sm text-background/70">
+                  <li>About Us</li>
+                  <li>Privacy Policy</li>
+                  <li>Terms of Service</li>
+                  <li>Careers</li>
+                </ul>
+              </div>
+            </div>
+            <div className="border-t border-background/20 mt-8 pt-8 text-center text-sm text-background/70">
+              <p>&copy; 2024 WasteWise. All rights reserved. Built for a sustainable future.</p>
+            </div>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 };

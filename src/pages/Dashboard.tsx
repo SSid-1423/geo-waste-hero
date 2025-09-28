@@ -1,7 +1,11 @@
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatsCard } from "@/components/StatsCard";
+import { QuickReportCard } from "@/components/QuickReportCard";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRealTimeUpdates } from "@/hooks/useRealTimeUpdates";
 import { 
   ArrowLeft, 
   MapPin, 
@@ -12,89 +16,119 @@ import {
   Users,
   Trash2,
   TrendingUp,
-  FileText
+  FileText,
+  LogOut,
+  RefreshCw
 } from "lucide-react";
 
-interface DashboardProps {
-  role: "citizen" | "government" | "municipality";
-  onBack: () => void;
-}
+export function Dashboard() {
+  const { role } = useParams<{ role: string }>();
+  const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
+  const { reports, tasks, loading, refetch } = useRealTimeUpdates();
 
-export function Dashboard({ role, onBack }: DashboardProps) {
+  const currentRole = (role || profile?.role) as "citizen" | "government" | "municipality";
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  // Calculate stats based on real data
+  const getStats = () => {
+    if (currentRole === 'citizen') {
+      const userReports = reports;
+      const resolved = userReports.filter(r => r.status === 'completed').length;
+      const inProgress = userReports.filter(r => r.status === 'in_progress' || r.status === 'assigned').length;
+      const pending = userReports.filter(r => r.status === 'pending' || r.status === 'verified').length;
+      
+      return {
+        total: userReports.length,
+        resolved,
+        inProgress,
+        pending
+      };
+    } else if (currentRole === 'government') {
+      const verified = reports.filter(r => r.status === 'verified' || r.status === 'assigned' || r.status === 'in_progress' || r.status === 'completed').length;
+      const pendingReview = reports.filter(r => r.status === 'pending').length;
+      const rejected = reports.filter(r => r.status === 'rejected').length;
+      
+      return {
+        total: reports.length,
+        verified,
+        pendingReview,
+        rejected
+      };
+    } else {
+      const userTasks = tasks;
+      const completed = userTasks.filter(t => t.status === 'completed').length;
+      const inProgress = userTasks.filter(t => t.status === 'in_progress').length;
+      const assigned = userTasks.filter(t => t.status === 'assigned').length;
+      
+      return {
+        total: userTasks.length,
+        completed,
+        inProgress,
+        assigned
+      };
+    }
+  };
+
+  const stats = getStats();
   const renderCitizenDashboard = () => (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard value="12" label="Reports Submitted" color="primary" trend="up" />
-        <StatsCard value="8" label="Resolved" color="success" />
-        <StatsCard value="3" label="In Progress" color="warning" />
-        <StatsCard value="1" label="Pending" color="accent" />
+        <StatsCard value={stats.total.toString()} label="Reports Submitted" color="primary" trend="up" />
+        <StatsCard value={stats.resolved.toString()} label="Resolved" color="success" />
+        <StatsCard value={stats.inProgress.toString()} label="In Progress" color="warning" />
+        <StatsCard value={stats.pending.toString()} label="Pending" color="accent" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5" />
-              Quick Report
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <Camera className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mb-4">
-                Take a photo to report waste in your area
-              </p>
-              <Button variant="hero" size="lg">
-                <Camera className="mr-2 h-4 w-4" />
-                Take Photo
-              </Button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <Button variant="outline" size="sm">
-                <Trash2 className="mr-1 h-3 w-3" />
-                Dry Waste
-              </Button>
-              <Button variant="outline" size="sm">
-                <Trash2 className="mr-1 h-3 w-3" />
-                Wet Waste
-              </Button>
-              <Button variant="outline" size="sm">
-                <AlertTriangle className="mr-1 h-3 w-3" />
-                Hazardous
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <QuickReportCard />
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               Recent Reports
+              {loading && <RefreshCw className="h-4 w-4 animate-spin" />}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {[
-              { id: "WR001", status: "resolved", location: "MG Road", date: "2 days ago" },
-              { id: "WR002", status: "progress", location: "Park Street", date: "5 days ago" },
-              { id: "WR003", status: "pending", location: "City Center", date: "1 week ago" },
-            ].map((report) => (
+            {reports.slice(0, 5).map((report) => (
               <div key={report.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div>
-                  <p className="font-medium text-sm">{report.id}</p>
-                  <p className="text-xs text-muted-foreground">{report.location}</p>
+                  <p className="font-medium text-sm">{report.title}</p>
+                  <p className="text-xs text-muted-foreground">{report.address || 'No address'}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{report.waste_type} waste</p>
                 </div>
                 <div className="text-right">
                   <Badge 
-                    variant={report.status === "resolved" ? "default" : report.status === "progress" ? "secondary" : "outline"}
+                    variant={
+                      report.status === "completed" ? "default" : 
+                      report.status === "in_progress" || report.status === "assigned" ? "secondary" : 
+                      "outline"
+                    }
                     className="mb-1"
                   >
-                    {report.status === "resolved" ? "Resolved" : report.status === "progress" ? "In Progress" : "Pending"}
+                    {report.status === "completed" ? "Completed" : 
+                     report.status === "in_progress" ? "In Progress" :
+                     report.status === "assigned" ? "Assigned" :
+                     report.status === "verified" ? "Verified" :
+                     report.status === "rejected" ? "Rejected" : "Pending"}
                   </Badge>
-                  <p className="text-xs text-muted-foreground">{report.date}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(report.created_at).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
             ))}
+            {reports.length === 0 && !loading && (
+              <div className="text-center py-4 text-muted-foreground">
+                No reports yet. Submit your first report above!
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -104,10 +138,10 @@ export function Dashboard({ role, onBack }: DashboardProps) {
   const renderGovernmentDashboard = () => (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard value="847" label="Total Reports" color="primary" trend="up" />
-        <StatsCard value="623" label="Verified" color="success" />
-        <StatsCard value="156" label="Pending Review" color="warning" />
-        <StatsCard value="68" label="Rejected" color="accent" />
+        <StatsCard value={stats.total.toString()} label="Total Reports" color="primary" trend="up" />
+        <StatsCard value={stats.verified.toString()} label="Verified" color="success" />
+        <StatsCard value={stats.pendingReview.toString()} label="Pending Review" color="warning" />
+        <StatsCard value={stats.rejected.toString()} label="Rejected" color="accent" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -184,10 +218,10 @@ export function Dashboard({ role, onBack }: DashboardProps) {
   const renderMunicipalityDashboard = () => (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard value="34" label="Assigned Tasks" color="accent" />
-        <StatsCard value="28" label="Completed" color="success" trend="up" />
-        <StatsCard value="6" label="In Progress" color="warning" />
-        <StatsCard value="0" label="Overdue" color="primary" />
+        <StatsCard value={stats.total.toString()} label="Assigned Tasks" color="accent" />
+        <StatsCard value={stats.completed.toString()} label="Completed" color="success" trend="up" />
+        <StatsCard value={stats.inProgress.toString()} label="In Progress" color="warning" />
+        <StatsCard value={stats.assigned.toString()} label="Pending Start" color="primary" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -260,7 +294,7 @@ export function Dashboard({ role, onBack }: DashboardProps) {
   );
 
   const getRoleTitle = () => {
-    switch (role) {
+    switch (currentRole) {
       case "citizen":
         return "Citizen Dashboard";
       case "government":
@@ -276,25 +310,33 @@ export function Dashboard({ role, onBack }: DashboardProps) {
     <div className="min-h-screen bg-gradient-surface">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            onClick={onBack}
-            className="mb-4"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Button>
+          <div className="flex justify-between items-center mb-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate("/")}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={handleSignOut}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
           <h1 className="text-3xl font-bold bg-gradient-hero bg-clip-text text-transparent">
             {getRoleTitle()}
           </h1>
           <p className="text-muted-foreground mt-2">
-            Welcome back! Here's what's happening in your area.
+            Welcome back, {profile?.full_name}! Here's what's happening in your area.
           </p>
         </div>
 
-        {role === "citizen" && renderCitizenDashboard()}
-        {role === "government" && renderGovernmentDashboard()}
-        {role === "municipality" && renderMunicipalityDashboard()}
+        {currentRole === "citizen" && renderCitizenDashboard()}
+        {currentRole === "government" && renderGovernmentDashboard()}
+        {currentRole === "municipality" && renderMunicipalityDashboard()}
       </div>
     </div>
   );

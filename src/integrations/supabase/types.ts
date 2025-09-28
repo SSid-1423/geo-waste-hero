@@ -14,7 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          address: string | null
+          avatar_url: string | null
+          created_at: string
+          department: string | null
+          email: string
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          department?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          phone?: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          department?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          actual_completion: string | null
+          assigned_by: string
+          assigned_to: string
+          completion_photo_urls: string[] | null
+          created_at: string
+          estimated_completion: string | null
+          id: string
+          notes: string | null
+          report_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          actual_completion?: string | null
+          assigned_by: string
+          assigned_to: string
+          completion_photo_urls?: string[] | null
+          created_at?: string
+          estimated_completion?: string | null
+          id?: string
+          notes?: string | null
+          report_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_completion?: string | null
+          assigned_by?: string
+          assigned_to?: string
+          completion_photo_urls?: string[] | null
+          created_at?: string
+          estimated_completion?: string | null
+          id?: string
+          notes?: string | null
+          report_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "waste_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waste_reports: {
+        Row: {
+          address: string | null
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          photo_urls: string[] | null
+          priority: string | null
+          reporter_id: string
+          status: string
+          title: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+          waste_type: string
+        }
+        Insert: {
+          address?: string | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          photo_urls?: string[] | null
+          priority?: string | null
+          reporter_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          waste_type: string
+        }
+        Update: {
+          address?: string | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          photo_urls?: string[] | null
+          priority?: string | null
+          reporter_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          waste_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +177,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      user_role: "government" | "municipality" | "citizen"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +304,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["government", "municipality", "citizen"],
+    },
   },
 } as const
