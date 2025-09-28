@@ -21,7 +21,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role: 'government' | 'municipality' | 'citizen') => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, role: 'government' | 'municipality' | 'citizen', address?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: 'government' | 'municipality' | 'citizen') => {
+  const signUp = async (email: string, password: string, fullName: string, role: 'government' | 'municipality' | 'citizen', address?: string) => {
     try {
       // Check if email is already registered
       const { data: existingUser } = await supabase
@@ -111,7 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           emailRedirectTo: redirectUrl,
           data: {
             full_name: fullName,
-            role: role
+            role: role,
+            address: address
           }
         }
       });

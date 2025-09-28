@@ -26,10 +26,10 @@ export function QuickReportCard() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!reportData.title || !reportData.waste_type) {
+    if (!reportData.title || !reportData.waste_type || images.length === 0) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields and upload at least one photo",
         variant: "destructive"
       });
       return;
@@ -188,7 +188,10 @@ export function QuickReportCard() {
           </div>
 
           <div className="space-y-2">
-            <Label>Photos (Optional)</Label>
+            <Label>Photos of the Issue *</Label>
+            <p className="text-xs text-muted-foreground">
+              Upload clear photos showing the waste/dirty area that needs attention
+            </p>
             <ImageUpload onImageSelect={setImages} maxImages={3} />
           </div>
 

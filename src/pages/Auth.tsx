@@ -15,7 +15,16 @@ const signUpSchema = z.object({
   email: z.string().email("Invalid email address").max(255, "Email must be less than 255 characters"),
   password: z.string().min(6, "Password must be at least 6 characters").max(100, "Password must be less than 100 characters"),
   fullName: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
-  role: z.enum(['government', 'municipality', 'citizen'], { required_error: "Role is required" })
+  role: z.enum(['government', 'municipality', 'citizen'], { required_error: "Role is required" }),
+  address: z.string().optional()
+}).refine((data) => {
+  if (data.role === 'municipality') {
+    return data.address && data.address.trim().length > 0;
+  }
+  return true;
+}, {
+  message: "Municipality users must provide an area of responsibility",
+  path: ["address"]
 });
 
 const signInSchema = z.object({
@@ -29,7 +38,8 @@ export default function Auth() {
     email: "",
     password: "",
     fullName: "",
-    role: "" as "government" | "municipality" | "citizen" | ""
+    role: "" as "government" | "municipality" | "citizen" | "",
+    address: ""
   });
   const [signInData, setSignInData] = useState({
     email: "",
@@ -90,7 +100,8 @@ export default function Auth() {
         signUpData.email,
         signUpData.password,
         signUpData.fullName,
-        signUpData.role as "government" | "municipality" | "citizen"
+        signUpData.role as "government" | "municipality" | "citizen",
+        signUpData.address
       );
 
       if (error) {
@@ -286,6 +297,27 @@ export default function Auth() {
                       <p className="text-sm text-destructive">{errors.role}</p>
                     )}
                   </div>
+                  
+                  {signUpData.role === 'municipality' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-address">Area of Responsibility *</Label>
+                      <Input
+                        id="signup-address"
+                        type="text"
+                        placeholder="Enter your municipality area or address"
+                        value={signUpData.address || ""}
+                        onChange={(e) => setSignUpData({ ...signUpData, address: e.target.value })}
+                        className={errors.address ? "border-destructive" : ""}
+                        required
+                      />
+                      {errors.address && (
+                        <p className="text-sm text-destructive">{errors.address}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Specify the area/locality you are responsible for managing
+                      </p>
+                    </div>
+                  )}
                   <Button 
                     type="submit" 
                     className="w-full" 

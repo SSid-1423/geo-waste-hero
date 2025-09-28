@@ -14,8 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 interface ReportCardProps {
   report: WasteReport;
   onUpdateStatus?: (reportId: string, status: WasteReport['status'], notes?: string) => void;
-  onAssignTask?: (reportId: string, assignedTo: string, notes?: string) => void;
-  municipalityUsers?: Array<{ id: string; name: string; email: string }>;
+  onAssignTask?: (report: WasteReport) => void;
   showActions?: boolean;
 }
 
@@ -23,8 +22,7 @@ export function ReportCard({
   report, 
   onUpdateStatus, 
   onAssignTask,
-  municipalityUsers = [],
-  showActions = true 
+  showActions = false 
 }: ReportCardProps) {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -62,17 +60,7 @@ export function ReportCard({
       return;
     }
 
-    if (onAssignTask && onUpdateStatus) {
-      onAssignTask(report.id, selectedMunicipality, assignmentNotes);
-      onUpdateStatus(report.id, 'assigned');
-      setIsAssigning(false);
-      setSelectedMunicipality('');
-      setAssignmentNotes('');
-      toast({
-        title: "Task Assigned",
-        description: "The task has been assigned to the selected municipality"
-      });
-    }
+    // This function is no longer used with the new assignment dialog
   };
 
   const getStatusColor = (status: string) => {
@@ -161,53 +149,12 @@ export function ReportCard({
             )}
             
             {report.status === 'verified' && (
-              <Dialog open={isAssigning} onOpenChange={setIsAssigning}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="w-full">
-                    Assign to Municipality
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Assign Task</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Select Municipality</Label>
-                      <Select value={selectedMunicipality} onValueChange={setSelectedMunicipality}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose municipality..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {municipalityUsers.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.name} ({user.email})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label>Assignment Notes (Optional)</Label>
-                      <Input
-                        placeholder="Add any special instructions..."
-                        value={assignmentNotes}
-                        onChange={(e) => setAssignmentNotes(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => setIsAssigning(false)} className="flex-1">
-                        Cancel
-                      </Button>
-                      <Button onClick={handleAssign} className="flex-1">
-                        Assign Task
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button
+                size="sm"
+                onClick={() => onAssignTask?.(report)}
+              >
+                Assign Task
+              </Button>
             )}
           </div>
         )}

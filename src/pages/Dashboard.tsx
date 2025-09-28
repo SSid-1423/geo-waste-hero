@@ -10,6 +10,8 @@ import { TaskCard } from "@/components/TaskCard";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealTimeUpdates } from "@/hooks/useRealTimeUpdates";
+import { useMunicipalityPresence } from "@/hooks/useMunicipalityPresence";
+import { MunicipalityAssignmentDialog } from "@/components/MunicipalityAssignmentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   ArrowLeft, 
@@ -43,37 +45,24 @@ export function Dashboard() {
     refetch 
   } = useRealTimeUpdates();
   
-  const [municipalityUsers, setMunicipalityUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const { municipalityUsers, onlineCount, totalCount } = useMunicipalityPresence();
   const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [feedbackDialog, setFeedbackDialog] = useState<{
     isOpen: boolean;
     reportId: string;
     reportTitle: string;
   }>({ isOpen: false, reportId: '', reportTitle: '' });
+  
+  const [assignmentDialog, setAssignmentDialog] = useState<{
+    isOpen: boolean;
+    reportId: string;
+    reportTitle: string;
+    reportAddress?: string;
+  }>({ isOpen: false, reportId: '', reportTitle: '', reportAddress: '' });
 
   const currentRole = (role || profile?.role) as "citizen" | "government" | "municipality";
 
-  // Fetch municipality users for assignment
-  useEffect(() => {
-    const fetchMunicipalityUsers = async () => {
-      if (profile?.role === 'government') {
-        const { data } = await supabase
-          .from('profiles')
-          .select('user_id, full_name, email')
-          .eq('role', 'municipality');
-        
-        if (data) {
-          setMunicipalityUsers(data.map(user => ({
-            id: user.user_id,
-            name: user.full_name || user.email,
-            email: user.email
-          })));
-        }
-      }
-    };
-
-    fetchMunicipalityUsers();
-  }, [profile?.role]);
+  // Remove the old municipality users fetch since it's handled by the hook
 
   // Check for completed tasks to show feedback dialog
   useEffect(() => {
@@ -110,6 +99,16 @@ export function Dashboard() {
       report_id: reportId,
       assigned_to: assignedTo,
       notes
+    });
+    setAssignmentDialog({ isOpen: false, reportId: '', reportTitle: '', reportAddress: '' });
+  };
+
+  const openAssignmentDialog = (report: any) => {
+    setAssignmentDialog({
+      isOpen: true,
+      reportId: report.id,
+      reportTitle: report.title,
+      reportAddress: report.address
     });
   };
 
@@ -226,7 +225,7 @@ export function Dashboard() {
           <StatsCard value={stats.verified.toString()} label="Verified" color="success" />
           <StatsCard value={stats.pendingReview.toString()} label="Pending Review" color="warning" />
           <StatsCard value={userCounts.citizens.toString()} label="Citizens" color="accent" />
-          <StatsCard value={userCounts.municipalities.toString()} label="Municipalities" color="secondary" />
+          <StatsCard value={onlineCount.toString()} label="Online Municipalities" color="secondary" trend="up" />
           <StatsCard value={completedReports.length.toString()} label="Completed" color="success" />
         </div>
 
@@ -269,8 +268,7 @@ export function Dashboard() {
                   key={report.id}
                   report={report}
                   onUpdateStatus={updateReportStatus}
-                  onAssignTask={handleAssignTask}
-                  municipalityUsers={municipalityUsers}
+                  onAssignTask={openAssignmentDialog}
                   showActions={true}
                 />
               ))}
@@ -428,6 +426,15 @@ export function Dashboard() {
           reportTitle={feedbackDialog.reportTitle}
           reportId={feedbackDialog.reportId}
           onSubmitFeedback={handleFeedbackSubmit}
+        />
+
+        <MunicipalityAssignmentDialog
+          isOpen={assignmentDialog.isOpen}
+          onClose={() => setAssignmentDialog({ isOpen: false, reportId: '', reportTitle: '', reportAddress: '' })}
+          onAssign={(userId, notes) => handleAssignTask(assignmentDialog.reportId, userId, notes)}
+          municipalityUsers={municipalityUsers}
+          reportTitle={assignmentDialog.reportTitle}
+          reportAddress={assignmentDialog.reportAddress}
         />
       </div>
     </div>
