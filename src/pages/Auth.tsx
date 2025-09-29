@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, MapPin } from "lucide-react";
 import { z } from "zod";
 
 const signUpSchema = z.object({
@@ -46,6 +46,7 @@ export default function Auth() {
     password: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
@@ -87,6 +88,56 @@ export default function Auth() {
       }
       return false;
     }
+  };
+
+  const getLiveLocation = async () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Error",
+        description: "Geolocation is not supported by your browser.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLocationLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await res.json();
+          const fullAddress = data.display_name || 'Address not found';
+          setSignUpData({ ...signUpData, address: fullAddress });
+          toast({
+            title: "Location Found",
+            description: "Your location has been auto-filled successfully."
+          });
+        } catch (err) {
+          console.error(err);
+          toast({
+            title: "Error",
+            description: "Failed to fetch address from coordinates.",
+            variant: "destructive"
+          });
+        } finally {
+          setLocationLoading(false);
+        }
+      },
+      (error) => {
+        console.error(error);
+        toast({
+          title: "Permission Denied",
+          description: "Please enable location access or enter address manually.",
+          variant: "destructive"
+        });
+        setLocationLoading(false);
+      }
+    );
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -300,14 +351,37 @@ export default function Auth() {
                   
                   {signUpData.role === 'municipality' && (
                     <div className="space-y-2">
-                      <Label htmlFor="signup-address">Area of Responsibility *</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="signup-address">Area of Responsibility *</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={getLiveLocation}
+                          disabled={locationLoading}
+                          className="h-8 px-2 text-xs"
+                        >
+                          {locationLoading ? (
+                            <>
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              Getting...
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="mr-1 h-3 w-3" />
+                              Use Location
+                            </>
+                          )}
+                        </Button>
+                      </div>
                       <Input
                         id="signup-address"
                         type="text"
-                        placeholder="Enter your municipality area or address"
+                        placeholder="Enter your municipality area or click 'Use Location'"
                         value={signUpData.address || ""}
                         onChange={(e) => setSignUpData({ ...signUpData, address: e.target.value })}
                         className={errors.address ? "border-destructive" : ""}
+                        disabled={locationLoading}
                         required
                       />
                       {errors.address && (
