@@ -8,9 +8,11 @@ import { QuickReportCard } from "@/components/QuickReportCard";
 import { ReportCard } from "@/components/ReportCard";
 import { TaskCard } from "@/components/TaskCard";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
+import { MunicipalitySelector } from "@/components/MunicipalitySelector";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealTimeUpdates } from "@/hooks/useRealTimeUpdates";
 import { useMunicipalityPresence } from "@/hooks/useMunicipalityPresence";
+import { useMunicipalityMatching } from "@/hooks/useMunicipalityMatching";
 import { MunicipalityAssignmentDialog } from "@/components/MunicipalityAssignmentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -46,6 +48,7 @@ export function Dashboard() {
   } = useRealTimeUpdates();
   
   const { municipalityUsers, onlineCount, totalCount } = useMunicipalityPresence();
+  const { municipalities, getBestMatch } = useMunicipalityMatching();
   const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [feedbackDialog, setFeedbackDialog] = useState<{
     isOpen: boolean;
@@ -59,6 +62,12 @@ export function Dashboard() {
     reportTitle: string;
     reportAddress?: string;
   }>({ isOpen: false, reportId: '', reportTitle: '', reportAddress: '' });
+
+  const [municipalitySelectionDialog, setMunicipalitySelectionDialog] = useState<{
+    isOpen: boolean;
+    report: any;
+    selectedMunicipality: any;
+  }>({ isOpen: false, report: null, selectedMunicipality: null });
 
   const currentRole = (role || profile?.role) as "citizen" | "government" | "municipality";
 
@@ -110,6 +119,39 @@ export function Dashboard() {
       reportTitle: report.title,
       reportAddress: report.address
     });
+  };
+
+  const openMunicipalitySelection = async (report: any) => {
+    // Try to auto-match first
+    let bestMatch = null;
+    if (report.address) {
+      bestMatch = await getBestMatch(report.address, report.location_lat, report.location_lng);
+    }
+    
+    setMunicipalitySelectionDialog({
+      isOpen: true,
+      report,
+      selectedMunicipality: bestMatch
+    });
+  };
+
+  const handleMunicipalityAssignment = async () => {
+    const { report, selectedMunicipality } = municipalitySelectionDialog;
+    if (!report || !selectedMunicipality) return;
+
+    try {
+      await createTask({
+        report_id: report.id,
+        assigned_to: selectedMunicipality.user_id,
+        notes: `Auto-assigned based on location: ${report.address || 'No address'}`
+      });
+
+      await updateReportStatus(report.id, 'assigned');
+      
+      setMunicipalitySelectionDialog({ isOpen: false, report: null, selectedMunicipality: null });
+    } catch (error) {
+      console.error('Failed to assign municipality:', error);
+    }
   };
 
   // Calculate stats based on real data
@@ -264,13 +306,23 @@ export function Dashboard() {
             </CardHeader>
             <CardContent className="space-y-3 max-h-96 overflow-y-auto">
               {verifiedReports.slice(0, 5).map((report) => (
-                <ReportCard
-                  key={report.id}
-                  report={report}
-                  onUpdateStatus={updateReportStatus}
-                  onAssignTask={openAssignmentDialog}
-                  showActions={true}
-                />
+                <div key={report.id} className="space-y-2">
+                  <ReportCard
+                    report={report}
+                    onUpdateStatus={updateReportStatus}
+                    onAssignTask={openAssignmentDialog}
+                    showActions={true}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openMunicipalitySelection(report)}
+                    className="w-full"
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Smart Municipality Assignment
+                  </Button>
+                </div>
               ))}
               {verifiedReports.length === 0 && (
                 <div className="text-center py-4 text-muted-foreground">
@@ -436,6 +488,57 @@ export function Dashboard() {
           reportTitle={assignmentDialog.reportTitle}
           reportAddress={assignmentDialog.reportAddress}
         />
+
+        {/* Municipality Selection Dialog */}
+        {municipalitySelectionDialog.isOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-background rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="p-6">
+                <h2 className="text-lg font-semibold mb-4">
+                  Smart Municipality Assignment
+                </h2>
+                <div className="mb-4">
+                  <h3 className="font-medium text-sm">{municipalitySelectionDialog.report?.title}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    📍 {municipalitySelectionDialog.report?.address || 'No address provided'}
+                  </p>
+                  {municipalitySelectionDialog.selectedMunicipality && (
+                    <p className="text-xs text-success-foreground mt-1">
+                      ✓ Auto-matched based on location
+                    </p>
+                  )}
+                </div>
+                
+                <MunicipalitySelector
+                  municipalities={municipalities}
+                  selectedMunicipality={municipalitySelectionDialog.selectedMunicipality}
+                  onSelect={(municipality) => 
+                    setMunicipalitySelectionDialog(prev => ({ 
+                      ...prev, 
+                      selectedMunicipality: municipality 
+                    }))
+                  }
+                  title="Select Best Municipality"
+                />
+                
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setMunicipalitySelectionDialog({ isOpen: false, report: null, selectedMunicipality: null })}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleMunicipalityAssignment}
+                    disabled={!municipalitySelectionDialog.selectedMunicipality}
+                  >
+                    Assign to {municipalitySelectionDialog.selectedMunicipality?.full_name || 'Municipality'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useRealTimeUpdates } from "@/hooks/useRealTimeUpdates";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/components/ImageUpload";
-import { Camera, MapPin, Loader2 } from "lucide-react";
+import { MunicipalitySelector } from "@/components/MunicipalitySelector";
+import { useLocation } from "@/hooks/useLocation";
+import { useMunicipalityMatching } from "@/hooks/useMunicipalityMatching";
+import { useAuth } from "@/contexts/AuthContext";
+import { Camera, MapPin, Loader2, Navigation, Users } from "lucide-react";
 
 export function QuickReportCard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<File[]>([]);
+  const [showMunicipalitySelector, setShowMunicipalitySelector] = useState(false);
+  const [selectedMunicipality, setSelectedMunicipality] = useState<any>(null);
   const [reportData, setReportData] = useState({
     title: "",
     description: "",
@@ -20,8 +26,50 @@ export function QuickReportCard() {
     address: ""
   });
 
+  const { user } = useAuth();
   const { createReport } = useRealTimeUpdates();
   const { toast } = useToast();
+  const { locationData, isLoading: locationLoading, requestLocation, permissionGranted } = useLocation();
+  const { municipalities, getBestMatch, loading: municipalitiesLoading } = useMunicipalityMatching();
+
+  // Auto-fill address when location is detected
+  useEffect(() => {
+    if (locationData && !reportData.address) {
+      setReportData(prev => ({ ...prev, address: locationData.address }));
+    }
+  }, [locationData]);
+
+  // Check for municipality match when address changes
+  useEffect(() => {
+    const checkMunicipalityMatch = async () => {
+      if (!reportData.address) return;
+      
+      const match = await getBestMatch(
+        reportData.address, 
+        locationData?.latitude, 
+        locationData?.longitude
+      );
+      
+      if (match) {
+        setSelectedMunicipality(match);
+        setShowMunicipalitySelector(false);
+      } else if (municipalities.length > 0) {
+        // No automatic match found, show municipality selector
+        setShowMunicipalitySelector(true);
+      }
+    };
+
+    if (reportData.address && municipalities.length > 0) {
+      checkMunicipalityMatch();
+    }
+  }, [reportData.address, municipalities]);
+
+  const handleLocationRequest = async () => {
+    const location = await requestLocation();
+    if (location) {
+      setReportData(prev => ({ ...prev, address: location.address }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,23 +83,28 @@ export function QuickReportCard() {
       return;
     }
 
+    // If no address and user is not logged in, require address
+    if (!reportData.address && !user) {
+      toast({
+        title: "Address Required",
+        description: "Please provide a location for your report",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // If no municipality match and municipalities are available, show selector
+    if (!selectedMunicipality && municipalities.length > 0 && reportData.address) {
+      setShowMunicipalitySelector(true);
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      // Get user's location if available
-      let location_lat, location_lng;
-      
-      if (navigator.geolocation) {
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
-          });
-          location_lat = position.coords.latitude;
-          location_lng = position.coords.longitude;
-        } catch (error) {
-          console.log('Location access denied or unavailable');
-        }
-      }
+      // Use location data if available
+      const location_lat = locationData?.latitude;
+      const location_lng = locationData?.longitude;
 
       // In a real app, you would upload images to storage and get URLs
       const photo_urls = images.length > 0 ? 
@@ -77,7 +130,9 @@ export function QuickReportCard() {
       } else {
         toast({
           title: "Report Submitted",
-          description: "Your waste report has been submitted successfully"
+          description: selectedMunicipality 
+            ? `Your report has been routed to ${selectedMunicipality.full_name}`
+            : "Your waste report has been submitted successfully"
         });
         
         // Reset form
@@ -88,6 +143,8 @@ export function QuickReportCard() {
           address: ""
         });
         setImages([]);
+        setSelectedMunicipality(null);
+        setShowMunicipalitySelector(false);
       }
     } catch (error) {
       toast({
@@ -163,17 +220,69 @@ export function QuickReportCard() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">Location/Address</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="address">
+                Location/Address {!user && <span className="text-destructive">*</span>}
+              </Label>
+              {user && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLocationRequest}
+                  disabled={locationLoading}
+                >
+                  {locationLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Navigation className="h-4 w-4" />
+                  )}
+                  {locationLoading ? 'Getting Location...' : 'Use Current Location'}
+                </Button>
+              )}
+            </div>
             <div className="relative">
               <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="address"
                 className="pl-10"
-                placeholder="Enter location or address"
+                placeholder={user ? "Enter location or use current location" : "Enter location or address (required)"}
                 value={reportData.address}
                 onChange={(e) => setReportData(prev => ({ ...prev, address: e.target.value }))}
+                required={!user}
               />
             </div>
+            
+            {/* Location Status */}
+            {locationData && (
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                Current location detected and used
+              </div>
+            )}
+            
+            {/* Municipality Assignment Status */}
+            {selectedMunicipality && (
+              <div className="p-2 bg-success/10 border border-success/20 rounded-md">
+                <div className="flex items-center gap-2 text-sm text-success-foreground">
+                  <Users className="h-4 w-4" />
+                  <span>Will be assigned to: <strong>{selectedMunicipality.full_name}</strong></span>
+                </div>
+              </div>
+            )}
+            
+            {showMunicipalitySelector && (
+              <div className="mt-3">
+                <MunicipalitySelector
+                  municipalities={municipalities}
+                  selectedMunicipality={selectedMunicipality}
+                  onSelect={setSelectedMunicipality}
+                  onConfirm={() => setShowMunicipalitySelector(false)}
+                  title="No Auto-Match Found"
+                  showConfirmButton={true}
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -214,8 +323,18 @@ export function QuickReportCard() {
             )}
           </Button>
 
-          <div className="text-xs text-muted-foreground">
-            * Required fields. Location will be automatically detected if permission is granted.
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div>* Required fields. {user ? 'Location will be automatically detected if permission is granted.' : 'Address is required for guests.'}</div>
+            {permissionGranted === false && user && (
+              <div className="text-amber-600">
+                Location permission denied. You can still enter address manually.
+              </div>
+            )}
+            {!selectedMunicipality && municipalities.length > 0 && reportData.address && (
+              <div className="text-amber-600">
+                Please select a municipality before submitting.
+              </div>
+            )}
           </div>
         </form>
       </CardContent>
