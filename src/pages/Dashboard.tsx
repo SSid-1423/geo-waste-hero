@@ -32,7 +32,8 @@ import {
   FileText,
   LogOut,
   RefreshCw,
-  ClipboardList
+  ClipboardList,
+  Briefcase
 } from "lucide-react";
 
 export function Dashboard() {

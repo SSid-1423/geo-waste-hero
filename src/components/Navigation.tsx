@@ -44,6 +44,12 @@ export function Navigation() {
             <a href="#impact" className="text-muted-foreground hover:text-foreground transition-colors">
               Impact
             </a>
+            <button 
+              onClick={() => navigate('/careers')} 
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Careers
+            </button>
             {user && profile ? (
               <Button variant="hero" onClick={handleAuthAction}>
                 <User className="mr-2 h-4 w-4" />
@@ -99,6 +105,12 @@ export function Navigation() {
             >
               Impact
             </a>
+            <button 
+              onClick={() => { navigate('/careers'); setIsMenuOpen(false); }} 
+              className="block text-muted-foreground hover:text-foreground transition-colors text-left"
+            >
+              Careers
+            </button>
             <div className="flex flex-col space-y-2 pt-4">
               {user && profile ? (
                 <Button variant="hero" className="w-full" onClick={handleAuthAction}>

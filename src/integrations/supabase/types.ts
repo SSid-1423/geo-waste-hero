@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      job_applications: {
+        Row: {
+          applicant_id: string
+          contact_phone: string | null
+          cover_letter: string | null
+          created_at: string
+          id: string
+          interview_date: string | null
+          interview_notes: string | null
+          job_id: string
+          resume_url: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applicant_id: string
+          contact_phone?: string | null
+          cover_letter?: string | null
+          created_at?: string
+          id?: string
+          interview_date?: string | null
+          interview_notes?: string | null
+          job_id: string
+          resume_url?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applicant_id?: string
+          contact_phone?: string | null
+          cover_letter?: string | null
+          created_at?: string
+          id?: string
+          interview_date?: string | null
+          interview_notes?: string | null
+          job_id?: string
+          resume_url?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_listings: {
+        Row: {
+          created_at: string
+          department: string | null
+          description: string
+          id: string
+          is_active: boolean
+          job_type: string
+          location: string | null
+          posted_by: string
+          requirements: string | null
+          salary_range: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          description: string
+          id?: string
+          is_active?: boolean
+          job_type?: string
+          location?: string | null
+          posted_by: string
+          requirements?: string | null
+          salary_range?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          description?: string
+          id?: string
+          is_active?: boolean
+          job_type?: string
+          location?: string | null
+          posted_by?: string
+          requirements?: string | null
+          salary_range?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
