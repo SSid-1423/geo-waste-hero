@@ -9,10 +9,14 @@ import { ReportCard } from "@/components/ReportCard";
 import { TaskCard } from "@/components/TaskCard";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { MunicipalitySelector } from "@/components/MunicipalitySelector";
+import { WorkerAssignmentDialog } from "@/components/WorkerAssignmentDialog";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealTimeUpdates } from "@/hooks/useRealTimeUpdates";
 import { useMunicipalityPresence } from "@/hooks/useMunicipalityPresence";
 import { useMunicipalityMatching } from "@/hooks/useMunicipalityMatching";
+import { useLocationTracking } from "@/hooks/useLocationTracking";
+import { useNotifications } from "@/hooks/useNotifications";
 import { MunicipalityAssignmentDialog } from "@/components/MunicipalityAssignmentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -49,6 +53,8 @@ export function Dashboard() {
   
   const { municipalityUsers, onlineCount, totalCount } = useMunicipalityPresence();
   const { municipalities, getBestMatch } = useMunicipalityMatching();
+  const { isTracking, locationData, updateAvailabilityStatus } = useLocationTracking();
+  const { unreadCount } = useNotifications();
   const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [feedbackDialog, setFeedbackDialog] = useState<{
     isOpen: boolean;
@@ -68,6 +74,9 @@ export function Dashboard() {
     report: any;
     selectedMunicipality: any;
   }>({ isOpen: false, report: null, selectedMunicipality: null });
+
+  const [isWorkerAssignmentOpen, setIsWorkerAssignmentOpen] = useState(false);
+  const [selectedReportForWorker, setSelectedReportForWorker] = useState<any>(null);
 
   const currentRole = (role || profile?.role) as "citizen" | "government" | "municipality";
 
@@ -119,6 +128,11 @@ export function Dashboard() {
       reportTitle: report.title,
       reportAddress: report.address
     });
+  };
+
+  const openWorkerAssignmentDialog = (report: any) => {
+    setSelectedReportForWorker(report);
+    setIsWorkerAssignmentOpen(true);
   };
 
   const openMunicipalitySelection = async (report: any) => {
@@ -313,15 +327,24 @@ export function Dashboard() {
                     onAssignTask={openAssignmentDialog}
                     showActions={true}
                   />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openMunicipalitySelection(report)}
-                    className="w-full"
-                  >
-                    <Users className="mr-2 h-4 w-4" />
-                    Smart Municipality Assignment
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openMunicipalitySelection(report)}
+                      className="flex-1"
+                    >
+                      <Users className="mr-2 h-4 w-4" />
+                      Assign Municipality
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => openWorkerAssignmentDialog(report)}
+                      className="flex-1"
+                    >
+                      Assign Worker
+                    </Button>
+                  </div>
                 </div>
               ))}
               {verifiedReports.length === 0 && (
@@ -452,13 +475,16 @@ export function Dashboard() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Home
             </Button>
-            <Button 
-              variant="ghost" 
-              onClick={handleSignOut}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
+            <div className="flex gap-2">
+              <NotificationCenter />
+              <Button 
+                variant="ghost" 
+                onClick={handleSignOut}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            </div>
           </div>
           <h1 className="text-3xl font-bold bg-gradient-hero bg-clip-text text-transparent">
             {getRoleTitle()}
@@ -471,6 +497,43 @@ export function Dashboard() {
         {currentRole === "citizen" && renderCitizenDashboard()}
         {currentRole === "government" && renderGovernmentDashboard()}
         {currentRole === "municipality" && renderMunicipalityDashboard()}
+
+        {/* Location Status for Municipality Workers */}
+        {profile?.role === 'municipality' && (
+          <div className="fixed bottom-4 right-4">
+            <Card className="p-4 w-72">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium">Location Status</h3>
+                  <Badge variant={isTracking ? "default" : "secondary"}>
+                    {isTracking ? "Tracking" : "Not tracking"}
+                  </Badge>
+                </div>
+                
+                {locationData && (
+                  <div className="text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      <span className="truncate">{locationData.address}</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex gap-2">
+                  <select
+                    className="flex-1 p-2 text-sm border rounded"
+                    onChange={(e) => updateAvailabilityStatus(e.target.value as any)}
+                    defaultValue="available"
+                  >
+                    <option value="available">Available</option>
+                    <option value="busy">Busy</option>
+                    <option value="offline">Offline</option>
+                  </select>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
 
         <FeedbackDialog
           isOpen={feedbackDialog.isOpen}
@@ -539,6 +602,13 @@ export function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* Worker Assignment Dialog */}
+        <WorkerAssignmentDialog
+          isOpen={isWorkerAssignmentOpen}
+          onClose={() => setIsWorkerAssignmentOpen(false)}
+          reportData={selectedReportForWorker || {}}
+        />
       </div>
     </div>
   );

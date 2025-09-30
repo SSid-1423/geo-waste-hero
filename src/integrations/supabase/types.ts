@@ -14,16 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
+          availability_status: string | null
           avatar_url: string | null
           created_at: string
+          current_address: string | null
+          current_location_lat: number | null
+          current_location_lng: number | null
           department: string | null
           email: string
           full_name: string | null
           id: string
           is_active: boolean | null
+          last_location_update: string | null
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -31,13 +69,18 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          availability_status?: string | null
           avatar_url?: string | null
           created_at?: string
+          current_address?: string | null
+          current_location_lat?: number | null
+          current_location_lng?: number | null
           department?: string | null
           email: string
           full_name?: string | null
           id?: string
           is_active?: boolean | null
+          last_location_update?: string | null
           phone?: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -45,13 +88,18 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          availability_status?: string | null
           avatar_url?: string | null
           created_at?: string
+          current_address?: string | null
+          current_location_lat?: number | null
+          current_location_lng?: number | null
           department?: string | null
           email?: string
           full_name?: string | null
           id?: string
           is_active?: boolean | null
+          last_location_update?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -71,6 +119,9 @@ export type Database = {
           notes: string | null
           report_id: string
           status: string
+          task_address: string | null
+          task_location_lat: number | null
+          task_location_lng: number | null
           updated_at: string
         }
         Insert: {
@@ -84,6 +135,9 @@ export type Database = {
           notes?: string | null
           report_id: string
           status?: string
+          task_address?: string | null
+          task_location_lat?: number | null
+          task_location_lng?: number | null
           updated_at?: string
         }
         Update: {
@@ -97,6 +151,9 @@ export type Database = {
           notes?: string | null
           report_id?: string
           status?: string
+          task_address?: string | null
+          task_location_lat?: number | null
+          task_location_lng?: number | null
           updated_at?: string
         }
         Relationships: [
