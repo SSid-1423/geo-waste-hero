@@ -54,6 +54,7 @@ export function Dashboard() {
   const [showTaskAssignmentDialog, setShowTaskAssignmentDialog] = useState(false);
   const [taskFilter, setTaskFilter] = useState('all');
   const [showCreateJobDialog, setShowCreateJobDialog] = useState(false);
+  const [selectedReportForAssignment, setSelectedReportForAssignment] = useState<any>(null);
 
   const currentRole = (role || profile?.role) as "citizen" | "government" | "municipality";
 
@@ -180,6 +181,10 @@ export function Dashboard() {
     navigate("/");
   };
 
+  const handleAssignTaskToReport = (report: any) => {
+    setSelectedReportForAssignment(report);
+  };
+
 
   const renderGovernmentDashboard = () => (
     <div className="space-y-6">
@@ -251,6 +256,7 @@ export function Dashboard() {
                   key={report.id}
                   report={report as any}
                   showActions={true}
+                  onAssignTask={handleAssignTaskToReport}
                 />
               ))}
             </div>
@@ -718,6 +724,22 @@ export function Dashboard() {
           onClose={() => setShowTaskAssignmentDialog(false)}
           workers={municipalityWorkers}
         />
+
+        {/* Worker Assignment Dialog for Reports */}
+        {selectedReportForAssignment && (
+          <WorkerAssignmentDialog
+            isOpen={!!selectedReportForAssignment}
+            onClose={() => setSelectedReportForAssignment(null)}
+            reportData={{
+              id: selectedReportForAssignment.id,
+              title: selectedReportForAssignment.title,
+              description: selectedReportForAssignment.description,
+              address: selectedReportForAssignment.address,
+              location_lat: selectedReportForAssignment.location_lat,
+              location_lng: selectedReportForAssignment.location_lng,
+            }}
+          />
+        )}
 
         {/* Create Job Dialog */}
         <CreateJobDialog

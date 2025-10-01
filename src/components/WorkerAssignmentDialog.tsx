@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -127,6 +127,9 @@ export function WorkerAssignmentDialog({ isOpen, onClose, reportData }: WorkerAs
             <Users className="h-5 w-5" />
             Assign Worker to Task
           </DialogTitle>
+          <DialogDescription>
+            Select a municipal worker to assign this task. Workers are sorted by distance and availability.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
