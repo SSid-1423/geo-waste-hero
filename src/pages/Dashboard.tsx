@@ -185,6 +185,33 @@ export function Dashboard() {
     setSelectedReportForAssignment(report);
   };
 
+  const handleUpdateReportStatus = async (reportId: string, status: string, notes?: string) => {
+    try {
+      const { error } = await supabase
+        .from('waste_reports')
+        .update({ 
+          status,
+          verified_at: status === 'verified' ? new Date().toISOString() : undefined,
+          verified_by: status === 'verified' ? profile?.user_id : undefined,
+        })
+        .eq('id', reportId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Report Updated",
+        description: `Report has been ${status}`,
+      });
+    } catch (error) {
+      console.error('Error updating report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update report status",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const renderGovernmentDashboard = () => (
     <div className="space-y-6">
@@ -256,6 +283,7 @@ export function Dashboard() {
                   key={report.id}
                   report={report as any}
                   showActions={true}
+                  onUpdateStatus={handleUpdateReportStatus}
                   onAssignTask={handleAssignTaskToReport}
                 />
               ))}
