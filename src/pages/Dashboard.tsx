@@ -19,6 +19,7 @@ import { QuickReportCard } from '@/components/QuickReportCard';
 import { Navigation } from '@/components/Navigation';
 import { WorkerLocationCard } from '@/components/WorkerLocationCard';
 import { WorkerAssignmentDialog } from '@/components/WorkerAssignmentDialog';
+import { TaskAssignmentDialog } from '@/components/TaskAssignmentDialog';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { JobListingCard } from '@/components/JobListingCard';
 import { JobApplicationManagement } from '@/components/JobApplicationManagement';
@@ -50,8 +51,7 @@ export function Dashboard() {
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
   
-  const [selectedWorker, setSelectedWorker] = useState(null);
-  const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
+  const [showTaskAssignmentDialog, setShowTaskAssignmentDialog] = useState(false);
   const [taskFilter, setTaskFilter] = useState('all');
   const [showCreateJobDialog, setShowCreateJobDialog] = useState(false);
 
@@ -180,51 +180,6 @@ export function Dashboard() {
     navigate("/");
   };
 
-  const handleAssignTask = async (workerId: string, taskData: any) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .insert({
-          assigned_to: workerId,
-          assigned_by: profile?.user_id,
-          report_id: '00000000-0000-0000-0000-000000000000', // Temporary placeholder
-          notes: taskData.notes,
-          task_address: taskData.address,
-          task_location_lat: taskData.latitude,
-          task_location_lng: taskData.longitude,
-          estimated_completion: taskData.deadline,
-          status: 'assigned'
-        });
-
-      if (error) throw error;
-
-      // Send notification to the assigned worker
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: workerId,
-          title: 'New Task Assigned',
-          message: `You have been assigned a new task: ${taskData.notes}`,
-          type: 'task_assignment',
-          data: { taskId: workerId }
-        });
-
-      toast({
-        title: "Task Assigned",
-        description: "Task has been assigned successfully and worker has been notified",
-      });
-
-      setShowAssignmentDialog(false);
-      setSelectedWorker(null);
-    } catch (error) {
-      console.error('Error assigning task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to assign task",
-        variant: "destructive",
-      });
-    }
-  };
 
   const renderGovernmentDashboard = () => (
     <div className="space-y-6">
@@ -305,6 +260,10 @@ export function Dashboard() {
         <TabsContent value="task-assignment" className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-foreground">Task Assignment</h2>
+            <Button onClick={() => setShowTaskAssignmentDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Assign New Task
+            </Button>
           </div>
           
           {/* Real-time Municipal Workers List */}
@@ -335,16 +294,6 @@ export function Dashboard() {
                   
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Tasks Completed: <strong>{worker.completed_tasks || 0}</strong></span>
-                    <Button 
-                      size="sm" 
-                      onClick={() => {
-                        setSelectedWorker(worker);
-                        setShowAssignmentDialog(true);
-                      }}
-                      disabled={worker.availability_status !== 'available'}
-                    >
-                      Assign Task
-                    </Button>
                   </div>
                 </div>
               ))}
@@ -460,10 +409,6 @@ export function Dashboard() {
                   ...worker,
                   is_online: true,
                   last_location_update: null
-                }}
-                onAssign={() => {
-                  setSelectedWorker(worker);
-                  setShowAssignmentDialog(true);
                 }}
               />
             ))}
@@ -768,99 +713,11 @@ export function Dashboard() {
         {currentRole === "municipality" && renderMunicipalityDashboard()}
 
         {/* Task Assignment Dialog */}
-        {showAssignmentDialog && selectedWorker && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-background rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold mb-4">
-                  Assign Task to {selectedWorker.full_name}
-                </h2>
-                
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.target as HTMLFormElement);
-                  const taskData = {
-                    notes: formData.get('notes'),
-                    address: formData.get('address'),
-                    deadline: formData.get('deadline'),
-                    latitude: formData.get('latitude'),
-                    longitude: formData.get('longitude')
-                  };
-                  handleAssignTask(selectedWorker.user_id, taskData);
-                }} className="space-y-4">
-                  
-                  <div>
-                    <Label htmlFor="notes">Task Description</Label>
-                    <Textarea 
-                      id="notes" 
-                      name="notes" 
-                      placeholder="Describe the task to be completed..."
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="address">Location</Label>
-                    <Input 
-                      id="address" 
-                      name="address" 
-                      placeholder="Enter task location..."
-                      required
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="latitude">Latitude (optional)</Label>
-                      <Input 
-                        id="latitude" 
-                        name="latitude" 
-                        type="number" 
-                        step="any"
-                        placeholder="e.g., 23.2398715"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="longitude">Longitude (optional)</Label>
-                      <Input 
-                        id="longitude" 
-                        name="longitude" 
-                        type="number" 
-                        step="any"
-                        placeholder="e.g., 77.389849"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="deadline">Expected Completion</Label>
-                    <Input 
-                      id="deadline" 
-                      name="deadline" 
-                      type="datetime-local"
-                    />
-                  </div>
-                  
-                  <div className="flex gap-2 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setShowAssignmentDialog(false);
-                        setSelectedWorker(null);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      Assign Task
-                    </Button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
+        <TaskAssignmentDialog
+          isOpen={showTaskAssignmentDialog}
+          onClose={() => setShowTaskAssignmentDialog(false)}
+          workers={municipalityWorkers}
+        />
 
         {/* Create Job Dialog */}
         <CreateJobDialog
