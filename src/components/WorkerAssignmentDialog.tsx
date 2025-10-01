@@ -101,6 +101,7 @@ export function WorkerAssignmentDialog({ isOpen, onClose, reportData }: WorkerAs
   // Calculate distances for workers if report has location
   const workersWithDistance = filteredWorkers.map(worker => ({
     ...worker,
+    completed_tasks: worker.completed_tasks || 0,
     distance: (reportData.location_lat && reportData.location_lng && 
                worker.current_location_lat && worker.current_location_lng) 
       ? calculateDistance(
@@ -178,13 +179,12 @@ export function WorkerAssignmentDialog({ isOpen, onClose, reportData }: WorkerAs
               ) : (
                 <div className="space-y-3 pr-4">
                   {workersWithDistance.map((worker) => (
-                    <WorkerLocationCard
-                      key={worker.user_id}
-                      worker={worker}
-                      distance={worker.distance}
-                      onAssign={handleAssignWorker}
-                      isAssigning={isAssigning && selectedWorker === worker.user_id}
-                    />
+                    <div key={worker.user_id} onClick={() => handleAssignWorker(worker.user_id)} className="cursor-pointer">
+                      <WorkerLocationCard
+                        worker={worker}
+                        distance={worker.distance}
+                      />
+                    </div>
                   ))}
                 </div>
               )}

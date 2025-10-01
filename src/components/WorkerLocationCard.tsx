@@ -15,16 +15,15 @@ interface Worker {
   availability_status: string;
   last_location_update: string | null;
   is_online: boolean;
+  completed_tasks: number;
 }
 
 interface WorkerLocationCardProps {
   worker: Worker;
   distance?: number;
-  onAssign: (workerId: string) => void;
-  isAssigning?: boolean;
 }
 
-export function WorkerLocationCard({ worker, distance, onAssign, isAssigning }: WorkerLocationCardProps) {
+export function WorkerLocationCard({ worker, distance }: WorkerLocationCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'available': return 'bg-green-500';
@@ -103,13 +102,9 @@ export function WorkerLocationCard({ worker, distance, onAssign, isAssigning }: 
             {getStatusText(worker.availability_status)}
           </Badge>
           
-          <Button
-            size="sm"
-            onClick={() => onAssign(worker.user_id)}
-            disabled={!worker.is_online || worker.availability_status !== 'available' || isAssigning}
-          >
-            {isAssigning ? 'Assigning...' : 'Assign Task'}
-          </Button>
+          <Badge variant={worker.completed_tasks > 0 ? "default" : "secondary"}>
+            {worker.completed_tasks} tasks completed
+          </Badge>
         </div>
       </CardContent>
     </Card>

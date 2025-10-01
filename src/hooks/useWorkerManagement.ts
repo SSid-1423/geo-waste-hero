@@ -13,6 +13,7 @@ interface Worker {
   availability_status: string;
   last_location_update: string | null;
   is_online: boolean;
+  completed_tasks: number;
 }
 
 export function useWorkerManagement() {
@@ -38,11 +39,26 @@ export function useWorkerManagement() {
         return;
       }
 
+      // Fetch completed tasks count for each worker
+      const workerIds = data?.map(w => w.user_id) || [];
+      const { data: tasksData } = await supabase
+        .from('tasks')
+        .select('assigned_to')
+        .eq('status', 'completed')
+        .in('assigned_to', workerIds);
+
+      // Count completed tasks per worker
+      const completedTasksMap = tasksData?.reduce((acc, task) => {
+        acc[task.assigned_to] = (acc[task.assigned_to] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
       const workersWithPresence = data?.map(worker => ({
         ...worker,
         is_online: worker.last_location_update ? 
           (new Date().getTime() - new Date(worker.last_location_update).getTime()) < 300000 : // 5 minutes
-          false
+          false,
+        completed_tasks: completedTasksMap[worker.user_id] || 0
       })) || [];
 
       setWorkers(workersWithPresence);
